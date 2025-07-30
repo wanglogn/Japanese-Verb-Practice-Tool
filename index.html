@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>日本語動詞活用ツール</title>
+    <title>日本語動詞活用自動変換ツール</title>
     <style>
       body {
         font-family: sans-serif;
@@ -83,7 +83,7 @@
     </style>
   </head>
   <body>
-    <h1>日本語動詞活用ツール</h1>
+    <h1>日本語動詞活用自動変換ツール</h1>
 
     <div class="tabs">
       <div class="tab active" onclick="switchTab('tab1')">動詞変形</div>
@@ -99,7 +99,9 @@
         placeholder="例：書く、食べる、勉強する"
       />
       <button onclick="showConjugation()">変形する</button>
+
       <div id="verbType"></div>
+
       <table id="resultTable" style="display: none">
         <thead>
           <tr>
@@ -115,8 +117,8 @@
     <div class="tab-content" id="tab2">
       <label for="practiceVerb">動詞（辞書形）を入力:</label>
       <input type="text" id="practiceVerb" placeholder="例：話す、来る、する" />
-      <button onclick="generatePractice()">練習開始</button>
       <div id="practiceType"></div>
+      <button onclick="generatePractice()">練習開始</button>
       <div id="practiceArea" style="display: none">
         <form id="practiceForm"></form>
         <button onclick="checkAnswers()">チェック</button>
@@ -125,6 +127,7 @@
     </div>
 
     <script>
+      // tab 切换函数
       function switchTab(id) {
         document
           .querySelectorAll(".tab")
@@ -137,7 +140,62 @@
           .classList.add("active")
         document.getElementById(id).classList.add("active")
       }
+      // 动词类型判定函数
+      function detectVerbType(verb) {
+        if (typeof verb !== "string" || verb.length === 0) return ""
 
+        const exceptionalGodan = new Set([
+          "入る",
+          "走る",
+          "知る",
+          "帰る",
+          "要る",
+          "切る",
+          "限る",
+          "減る",
+          "喋る",
+          "滑る",
+          "焦る",
+          "握る",
+          "蹴る",
+          "交じる",
+          "混じる",
+          "遮る",
+          "滅入る",
+          "参る",
+          "覆る",
+          "嘲る",
+          "罵る",
+          "照る",
+          "捻る"
+        ])
+
+        if (verb === "する") return "サ変動詞"
+        if (verb === "くる" || verb === "来る") return "カ変動詞"
+
+        if (verb.endsWith("する")) {
+          // 更精确地检查前缀是否为常见的サ変名词（此处可扩展字典）
+          return "サ変動詞"
+        }
+
+        if (verb.endsWith("る")) {
+          if (exceptionalGodan.has(verb)) return "五段動詞"
+
+          const preChar = verb.charAt(verb.length - 2)
+
+          // 假名中用于判断是否为一段动词的音节
+          const ichidanKana =
+            "いきしちにひみりぎじぢびぴえけせてねへめれげぜでべぺ"
+
+          // 一段动词的判断标准是“前一个音为假名i段或e段 + る”
+          if (ichidanKana.includes(preChar)) return "一段動詞"
+
+          return "五段動詞"
+        }
+
+        return "五段動詞" // 默认情况
+      }
+      // 五段活用尾巴数据
       const godanEndings = {
         う: [
           "い",
@@ -258,51 +316,13 @@
         ]
       }
 
-      const exceptionalGodan = new Set([
-        "入る",
-        "走る",
-        "知る",
-        "帰る",
-        "要る",
-        "切る",
-        "限る",
-        "減る",
-        "喋る",
-        "滑る",
-        "焦る",
-        "握る",
-        "蹴る",
-        "交じる",
-        "混じる",
-        "遮る",
-        "滅入る",
-        "参る",
-        "覆る",
-        "嘲る",
-        "罵る",
-        "照る",
-        "捻る"
-      ])
-
-      function detectVerbType(verb) {
-        if (verb === "する") return "サ変動詞"
-        if (verb === "くる" || verb === "来る") return "カ変動詞"
-        if (verb.endsWith("する")) return "サ変動詞"
-        if (verb.endsWith("る")) {
-          if (exceptionalGodan.has(verb)) return "五段動詞"
-          const preChar = verb.charAt(verb.length - 2)
-          const ichidanKana =
-            "いきしちにひみりぎじぢびぴえけせてねへめれげぜでべぺ"
-          if (ichidanKana.includes(preChar)) return "一段動詞"
-          return "五段動詞"
-        }
-        return "五段動詞"
-      }
-
+      // 活用函数
       function conjugateVerb(verb) {
         const type = detectVerbType(verb)
+
+        // 复合サ変動詞（例如勉強する）
         if (type === "サ変動詞" && verb !== "する") {
-          const base = verb.slice(0, -2)
+          const base = verb.slice(0, -2) // 去除「する」
           return {
             type,
             "ます形": base + "します",
@@ -319,6 +339,8 @@
             "禁止形": verb + "な"
           }
         }
+
+        // 纯「する」
         if (verb === "する") {
           return {
             type,
@@ -336,6 +358,8 @@
             "禁止形": "するな"
           }
         }
+
+        // 纯「くる」
         if (verb === "くる" || verb === "来る") {
           return {
             type,
@@ -353,6 +377,8 @@
             "禁止形": "くるな"
           }
         }
+
+        // 一段动词
         if (type === "一段動詞") {
           const base = verb.slice(0, -1)
           return {
@@ -371,11 +397,17 @@
             "禁止形": verb + "な"
           }
         }
+
+        // 五段动词
         if (type === "五段動詞") {
-          const end = verb.slice(-1)
+          const ending = verb.slice(-1)
           const base = verb.slice(0, -1)
+          const endings = godanEndings[ending]
+          if (!endings) {
+            return { error: "対応できない動詞の語尾です。" }
+          }
           const [i, te, ta, a, e, o, ba, kanou, ukemi, shieki, shiekiUkemi] =
-            godanEndings[end] || []
+            endings
           return {
             type,
             "ます形": base + i + "ます",
@@ -392,47 +424,55 @@
             "禁止形": verb + "な"
           }
         }
+
         return { error: "対応できない動詞形式です。" }
       }
 
+      // 展示函数
       function showConjugation() {
         const verb = document.getElementById("verbInput").value.trim()
-        if (!verb) {
-          return
-        }
+        if (!verb) return
+
         const result = conjugateVerb(verb)
         const tbody = document.getElementById("resultBody")
         const typeDiv = document.getElementById("verbType")
+
         tbody.innerHTML = ""
         typeDiv.textContent = ""
 
         if (result.error) {
           tbody.innerHTML = `<tr><td colspan="2">${result.error}</td></tr>`
-        } else {
-          typeDiv.textContent = `動詞タイプ：${result.type}`
-          for (const key in result) {
-            if (key !== "type") {
-              tbody.innerHTML += `<tr><td>${key}</td><td>${result[key]}</td></tr>`
-            }
-          }
+          document.getElementById("resultTable").style.display = "table"
+          return
+        }
+
+        // 显示动词类型
+        typeDiv.textContent = `動詞タイプ：${result.type}`
+
+        // 填充活用表格
+        for (let form in result) {
+          if (form === "type") continue
+          tbody.innerHTML += `<tr><td>${form}</td><td>${result[form]}</td></tr>`
         }
         document.getElementById("resultTable").style.display = "table"
       }
 
+      // 生成练习题
       function generatePractice() {
         const verb = document.getElementById("practiceVerb").value.trim()
         const result = conjugateVerb(verb)
+        const practiceType = document.getElementById("practiceType")
         const form = document.getElementById("practiceForm")
         const feedback = document.getElementById("practiceFeedback")
-        form.innerHTML = ""
+        practiceType.innerHTML = ""
         feedback.textContent = ""
         if (result.error) {
-          form.innerHTML = result.error
+          practiceType.innerHTML = result.error
+          form.innerHTML = ""
+          document.getElementById("practiceArea").style.display = "none"
           return
         }
-        document.getElementById(
-          "practiceType"
-        ).textContent = `動詞タイプ：${result.type}`
+        practiceType.textContent = `動詞タイプ：${result.type}`
         for (const key in result) {
           if (key !== "type") {
             form.innerHTML += `
@@ -445,15 +485,18 @@
         document.getElementById("practiceArea").style.display = "block"
       }
 
+      // 检查答案
       function checkAnswers() {
         const verb = document.getElementById("practiceVerb").value.trim()
-        if (!verb) {
-          return
-        }
         const result = conjugateVerb(verb)
         const inputs = document.querySelectorAll("#practiceForm input")
         let correctCount = 0
         inputs.forEach((input) => {
+          if (!verb) {
+            input.value = ""
+            input.style.border = "1px solid rgb(118, 118, 118)"
+            return
+          }
           const form = input.dataset.form
           const userAnswer = input.value.trim()
           if (userAnswer === result[form]) {
