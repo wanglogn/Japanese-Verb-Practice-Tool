@@ -17,6 +17,7 @@ export default function Home() {
   const [userAnswers, setUserAnswers] = useState<Record<string, string>>({});
   const [showPracticeArea, setShowPracticeArea] = useState(false);
   const [feedback, setFeedback] = useState("");
+  const [wrongFields, setWrongFields] = useState<Record<string, boolean>>({});
 
   // 切换标签页
   const switchTab = (id: string) => {
@@ -418,7 +419,7 @@ export default function Home() {
     setConjugationResult(result);
 
     if ("error" in result) {
-      setVerbType(`エラー: ${result.error}`);
+      toast.error(`エラー: ${result.error}`, { position: "top-center" });
     } else {
       setVerbType(`動詞タイプ：${result.type}`);
     }
@@ -428,18 +429,21 @@ export default function Home() {
   const generatePractice = () => {
     const verb = practiceVerb.trim();
     if (!verb) {
-      toast.error("練習用の動詞を入力してください");
+      toast.error("練習用の動詞を入力してください", {
+        position: "top-center", // 位置控制
+      });
       return;
     }
 
     const result = conjugateVerb(verb);
     if ("error" in result) {
-      setPracticeType(`エラー: ${result.error}`);
+      toast.error(`エラー: ${result.error}`, { position: "top-center" });
       setShowPracticeArea(false);
       return;
     }
 
     setPracticeType(`動詞タイプ：${result.type}`);
+    setWrongFields({});
 
     // 提取所有活用形（排除type属性）
     const forms: Array<{ form: string; answer: string }> = [];
@@ -471,12 +475,18 @@ export default function Home() {
   // 检查答案
   const checkAnswers = () => {
     let correctCount = 0;
+    const newWrongFields: Record<string, boolean> = {};
 
     practiceQuestions.forEach((question) => {
       if (userAnswers[question.form]?.trim() === question.answer) {
         correctCount++;
+        newWrongFields[question.form] = false;
+      } else {
+        newWrongFields[question.form] = true;
       }
     });
+
+    setWrongFields(newWrongFields);
 
     setFeedback(
       `正解数: ${correctCount}/${practiceQuestions.length}  ${
@@ -486,13 +496,17 @@ export default function Home() {
       }`
     );
 
-    // 高亮显示错误答案
     if (correctCount < practiceQuestions.length) {
       toast.info(
-        `練習結果: ${correctCount}/${practiceQuestions.length} 正解しました`
+        `練習結果: ${correctCount}/${practiceQuestions.length} 正解しました`,
+        {
+          position: "top-center", // 位置控制
+        }
       );
     } else {
-      toast.success("おめでとうございます！全問正解です！");
+      toast.success("おめでとうございます！全問正解です！", {
+        position: "top-center", // 位置控制
+      });
     }
   };
 
@@ -537,9 +551,10 @@ export default function Home() {
               <div>
                 <label
                   htmlFor="verbInput"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                  className="flex justify-between text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
                 >
-                  動詞（辞書形）を入力:
+                  <span>動詞（辞書形）を入力:</span>
+                  <span>{verbType}</span>
                 </label>
                 <input
                   type="text"
@@ -558,11 +573,11 @@ export default function Home() {
               </div>
 
               {/* 动词类型显示 */}
-              {verbType && (
+              {/* {verbType && (
                 <div className="p-4 bg-gray-100 dark:bg-gray-700 rounded-lg text-gray-800 dark:text-gray-200 font-medium">
                   {verbType}
                 </div>
-              )}
+              )} */}
 
               {/* 结果表格 */}
               {conjugationResult && !("error" in conjugationResult) && (
@@ -610,9 +625,10 @@ export default function Home() {
               <div>
                 <label
                   htmlFor="practiceVerb"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                  className="flex justify-between text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
                 >
-                  動詞（辞書形）を入力:
+                  <span>動詞（辞書形）を入力:</span>
+                  <span>{practiceType}</span>
                 </label>
                 <input
                   type="text"
@@ -631,11 +647,11 @@ export default function Home() {
               </div>
 
               {/* 动词类型显示 */}
-              {practiceType && (
+              {/* {practiceType && (
                 <div className="p-4 bg-gray-100 dark:bg-gray-700 rounded-lg text-gray-800 dark:text-gray-200 font-medium">
                   {practiceType}
                 </div>
-              )}
+              )} */}
 
               {/* 练习区域 */}
               {showPracticeArea && (
@@ -649,6 +665,11 @@ export default function Home() {
                       <div key={index} className="space-y-2">
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                           {question.form}：
+                          {wrongFields[question.form] && (
+                            <span className="ml-2 text-red-600">
+                              正解: {question.answer}
+                            </span>
+                          )}
                         </label>
                         <input
                           type="text"
@@ -656,7 +677,11 @@ export default function Home() {
                           onChange={(e) =>
                             handleAnswerChange(question.form, e.target.value)
                           }
-                          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:text-white"
+                          className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:text-white ${
+                            wrongFields[question.form]
+                              ? "border-red-500 bg-red-50 dark:border-red-400 dark:bg-red-950"
+                              : "border-gray-300 dark:border-gray-600"
+                          }`}
                           placeholder="入力してください..."
                         />
                       </div>
